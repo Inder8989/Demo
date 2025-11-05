@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Expense } from './types';
 import { LOCAL_STORAGE_KEYS } from './constants';
@@ -8,7 +7,7 @@ import { ExpenseList } from './components/ExpenseList';
 import { Summary } from './components/Summary';
 import { CategoryChart } from './components/CategoryChart';
 import { ExpenseForm } from './components/ExpenseForm';
-import { PlusIcon } from './components/icons';
+import { PlusIcon, ExportIcon } from './components/icons';
 
 function App() {
   const [showWelcome, setShowWelcome] = useLocalStorage<boolean>(LOCAL_STORAGE_KEYS.SHOW_WELCOME, true);
@@ -54,6 +53,39 @@ function App() {
     setIsFormOpen(true);
   };
 
+  const handleExportCSV = () => {
+    if (expenses.length === 0) {
+      alert("No expenses to export.");
+      return;
+    }
+
+    const headers = ['ID', 'Title', 'Amount', 'Category', 'Date'];
+    
+    // Sanitize data for CSV, especially titles with commas
+    const escapeCSV = (field: string) => `"${field.replace(/"/g, '""')}"`;
+
+    const rows = expenses.map(exp => 
+      [
+        exp.id,
+        escapeCSV(exp.title),
+        exp.amount,
+        exp.category,
+        exp.date
+      ].join(',')
+    );
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `expenses-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (showWelcome) {
     return <WelcomeScreen onGetStarted={handleGetStarted} />;
   }
@@ -79,7 +111,19 @@ function App() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-bold text-on-primary mb-4">Recent Expenses</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-on-primary">Recent Expenses</h2>
+            {expenses.length > 0 && (
+              <button 
+                onClick={handleExportCSV}
+                className="flex items-center space-x-2 bg-surface hover:bg-surface/80 text-on-surface-muted font-semibold py-2 px-3 rounded-md transition-colors text-sm"
+                aria-label="Export expenses to CSV"
+              >
+                <ExportIcon className="w-5 h-5" />
+                <span>Export CSV</span>
+              </button>
+            )}
+          </div>
           <ExpenseList 
             expenses={expenses}
             onEdit={openEditForm}
